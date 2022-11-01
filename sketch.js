@@ -7,7 +7,7 @@
 let webcam = null;
 let ctracker = null;
 let p1x, p1y, p2x, p2y;
-let numast = 10;
+let numast = 3;
 let asteroid = [];
 let distbord = 10;
 let spaceShip = null;
@@ -15,6 +15,11 @@ let angle = 0;
 let shoot;
 let shot = [];
 let launched = false;
+let haiperso = false;
+let haivinto = false;
+let mic;
+let miclevel;
+let voiceshot = false;
 
 function preload() {
   spaceShip = loadImage("./assets/myspace.png");
@@ -24,10 +29,15 @@ function setup() {
   createCanvas(windowWidth, windowHeight);
   angleMode(DEGREES);
   rectMode(CENTER);
+  textAlign(CENTER);
 
   webcam = createCapture(VIDEO);
   webcam.size(400, 300);
   webcam.hide();
+
+  userStartAudio();
+  mic = new p5.AudioIn();
+  mic.start();
 
   ctracker = new clm.tracker();
   ctracker.init();
@@ -48,6 +58,15 @@ function setup() {
 function draw() {
   background(0);
 
+  miclevel = mic.getLevel() * 100;
+
+  if (miclevel > 6 && voiceshot == false) {
+    voiceshot = true;
+    shot.push(new missile());
+  }
+  if (miclevel < 6) {
+    voiceshot = false;
+  }
   translate(width, 0);
   scale(-1, 1);
   //image(webcam, width / 2 - webcam.width / 2, height - webcam.height);
@@ -73,20 +92,59 @@ function draw() {
     angle = (Math.atan2(p2y - p1y, p2x - p1x) * 180) / Math.PI;
   }
 
-  for (let i = 0; i < asteroid.length; i++) {
+  if (haiperso == true) {
+    push();
+    translate(width, 0);
+    scale(-1, 1);
+    fill(0);
+    rect(width / 2, height / 2, 500, 300);
+    textSize(50);
+    text("hai perso", width / 2, height / 2);
+    noLoop();
+    pop();
+  }
+
+  if (haivinto == true) {
+    push();
+    translate(width, 0);
+    scale(-1, 1);
+    fill(0);
+    rect(width / 2, height / 2, 500, 300);
+    textSize(50);
+    text("hai vinto", width / 2, height / 2);
+    noLoop();
+    pop();
+  }
+
+  if (asteroid.length < 3) {
+    haivinto = true;
+  }
+  let i = 0;
+  while (i < asteroid.length) {
     asteroid[i].move();
 
     for (let z = 0; z < shot.length; z++) {
       if (
-        asteroid[i].x + 30 > shot[z].x &&
-        asteroid[i].y + 30 > shot[z].y &&
-        asteroid[i].x - 30 < shot[z].x &&
-        asteroid[i].y - 30 < shot[z].y
+        asteroid[i].x + 15 > shot[z].x &&
+        asteroid[i].y + 15 > shot[z].y &&
+        asteroid[i].x - 15 < shot[z].x &&
+        asteroid[i].y - 15 < shot[z].y
       ) {
         asteroid.splice(i, 1);
         shot.splice(z, 1);
+        i--;
       }
     }
+
+    if (
+      asteroid[i].x + 30 > (p1x + p2x) / 2 &&
+      asteroid[i].y + 30 > (p1y + p2y) / 2 &&
+      asteroid[i].x - 30 < (p1x + p2x) / 2 &&
+      asteroid[i].y - 30 < (p1y + p2y) / 2
+    ) {
+      haiperso = true;
+    }
+    i++;
   }
 
   push();
