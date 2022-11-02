@@ -31,18 +31,25 @@ let theme;
 let themestart = true;
 let startup = true;
 let string =
-  "Hello, the earth is in danger, you have to save it! You have to drive our very advanced spacecraft, it moves with your head, tilt and move it to have a more accurate aim. It also mounts a very sophisticated cannon that can destroy asteroids that threaten the earth, shout 'pem' to fire.Press any key to start";
+  "Hello, the earth is in danger, you have to save it! You have to drive our very advanced spacecraft, it moves with your head, tilt and move it to have a more accurate aim. It also mounts a very sophisticated cannon that can destroy asteroids that threaten the earth, shout 'pem' to fire, remember that you have limited ammo. Press any key to start";
 let currentCharacter = 0;
 let pageMargintop = 0;
 let pageMarginright = 0;
+let points = 0;
+let missileCounter = 200;
+let imgaeAsteroid;
+let pem;
 
 function preload() {
+  //loading of the images, fonts and sounds
   spaceShip = loadImage("./assets/myspace.png");
   font = loadFont("./assets/Monocraft.otf");
   explosion = loadSound("./assets/boom.mp3");
   gameover = loadSound("./assets/gameover.mp3");
   win = loadSound("./assets/win.mp3");
   theme = loadSound("./assets/theme.wav");
+  imgaeAsteroid = loadImage("./assets/asteroid.png");
+  pem = loadSound("./assets/pem.mp3");
 }
 
 function setup() {
@@ -54,19 +61,19 @@ function setup() {
   pageMargintop = width / 2;
   pageMarginright = height / 2;
   strokeWeight(3);
-
+  //initializing the webcam to track the head
   webcam = createCapture(VIDEO);
   webcam.size(400, 300);
   webcam.hide();
-
+  //initializing the mic to shoot
   userStartAudio();
   mic = new p5.AudioIn();
   mic.start();
-
+  //initializing of the library
   ctracker = new clm.tracker();
   ctracker.init();
   ctracker.start(webcam.elt);
-
+  //creation of the asteroids
   for (let i = 0; i < numast; i++) {
     asteroid.push(
       new asteroids(
@@ -81,6 +88,7 @@ function setup() {
 
 function draw() {
   if (startup == true) {
+    //text, this is made dividing the string in substrings and type every letter after 3 frames
     background(0);
     fill("green");
     let currentString = string.substring(0, currentCharacter);
@@ -103,25 +111,34 @@ function draw() {
     }
   } else {
     if (themestart == true) {
+      //music start
       themestart = false;
       theme.loop(0, 1, 0.4);
     }
+
     background(0);
-
+    //shooting mechanism
     miclevel = mic.getLevel() * 100;
-
     if (miclevel > 6 && voiceshot == false) {
-      voiceshot = true;
-      shot.push(new missile());
+      if (missileCounter > 0) {
+        voiceshot = true;
+        shot.push(new missile());
+        missileCounter--;
+      } else {
+        haiperso = true;
+      }
     }
     if (miclevel < 6) {
       voiceshot = false;
     }
+
+    //canvas flip in order to have a natural movement
     translate(width, 0);
     scale(-1, 1);
     //image(webcam, width / 2 - webcam.width / 2, height - webcam.height);
     var features = ctracker.getCurrentPosition();
 
+    //the library that i used have some features that track different parts of the face
     if (features.length > 0) {
       let leftEye = features[27];
       let lEx = leftEye[0];
@@ -131,18 +148,30 @@ function draw() {
       let rEx = rightEye[0];
       let rEy = rightEye[1];
 
+      //remapping the coordinates to have the possibility to move in the whole screen
       p1x = map(lEx, 0, 400, 0, width);
       p1y = map(lEy, 0, 300, 0, height);
       p2x = map(rEx, 0, 400, 0, width);
       p2y = map(rEy, 0, 300, 0, height);
 
       /*ellipse(p1x, p1y, 20);
-    ellipse(p2x, p2y, 20);*/
+      ellipse(p2x, p2y, 20);*/
 
-      angle = (Math.atan2(p2y - p1y, p2x - p1x) * 180) / Math.PI;
+      angle = (Math.atan2(p2y - p1y, p2x - p1x) * 180) / Math.PI; //calculation of the angle between the eyes to tilt the spaceship
     }
 
+    push(); //points and missiles counter
+    translate(width, 0);
+    scale(-1, 1);
+    fill("green");
+    noStroke();
+    textSize(30);
+    text(points, width - 80, 40);
+    text("missiles: " + missileCounter, 150, 40);
+    pop();
+
     if (haiperso == true) {
+      //game over
       gameover.play();
       theme.stop();
       push();
@@ -158,6 +187,7 @@ function draw() {
     }
 
     if (haivinto == true) {
+      //winning
       win.play();
       theme.stop();
       push();
@@ -172,9 +202,8 @@ function draw() {
       pop();
     }
 
-    console.log(asteroid.length);
-
     if (cont > 150) {
+      //creating new asteroids
       cont = 0;
       asteroid.push(
         new asteroids(
@@ -189,10 +218,13 @@ function draw() {
     }
 
     if (asteroid.length < 3) {
+      //winning condition
       haivinto = true;
     }
+
     let i = 0;
     while (i < asteroid.length) {
+      //movement and conditions of the asteroids, it checks if an asteroid and a missile are in the same spot
       asteroid[i].move();
 
       for (let z = 0; z < shot.length; z++) {
@@ -202,8 +234,10 @@ function draw() {
           asteroid[i].x - 15 < shot[z].x &&
           asteroid[i].y - 15 < shot[z].y
         ) {
-          asteroid.splice(i, 1);
+          asteroid.splice(i, 1); //this is the way to delete the asteroid and the missile
           shot.splice(z, 1);
+          points += 100;
+          missileCounter += 10;
           if (i > 1) {
             i--;
           }
@@ -212,7 +246,7 @@ function draw() {
       }
 
       if (
-        asteroid[i].x + 30 > (p1x + p2x) / 2 &&
+        asteroid[i].x + 30 > (p1x + p2x) / 2 && //game over conditions
         asteroid[i].y + 30 > (p1y + p2y) / 2 &&
         asteroid[i].x - 30 < (p1x + p2x) / 2 &&
         asteroid[i].y - 30 < (p1y + p2y) / 2
@@ -223,13 +257,14 @@ function draw() {
     }
 
     push();
-    translate((p1x + p2x) / 2, (p1y + p2y) / 2);
+    translate((p1x + p2x) / 2, (p1y + p2y) / 2); //spaceship
     rotate(angle);
     imageMode(CENTER);
     image(spaceShip, 0, 0, 70, 82);
     pop();
 
     for (let i = 0; i < shot.length; i++) {
+      //creating the missiles
       shot[i].move();
     }
   }
@@ -250,7 +285,7 @@ class asteroids {
   move() {
     noFill();
     stroke(this.color);
-    rect(this.x, this.y, this.a);
+    image(imgaeAsteroid, this.x, this.y, this.a, this.a);
 
     if (this.count == this.time) {
       this.time = round(random(100, 200));
@@ -317,9 +352,12 @@ class missile {
 }
 
 function keyPressed() {
+  //backup shooting mechanism
   if (keyCode == 32) {
     shoot = true;
     shot.push(new missile());
+    missileCounter--;
+    pem.play();
   }
 }
 
